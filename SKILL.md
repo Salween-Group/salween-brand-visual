@@ -63,19 +63,19 @@ If the user chooses **(b)**, read `brand/brand-visual.md` in full and apply what
 
 #### Heading capitalisation
 
-All H1 and H2 text must use **AP Style Title Case**:
+**H1 only** uses **AP Style Title Case**:
 - Capitalise the first and last word, and all "major" words (nouns, verbs, adjectives, adverbs)
 - Lowercase articles (*a*, *an*, *the*), coordinating conjunctions (*and*, *but*, *or*, *nor*, *for*, *so*, *yet*), and prepositions of fewer than five letters (*at*, *by*, *for*, *in*, *of*, *on*, *to*, *up*)
 - Always capitalise the first word after a colon
 
-**Examples:**
-- ✅ `Competitive Differentiation and Market Strategy`
-- ✅ `Why Content Marketing Works for B2B Companies`
-- ✅ `Three Goals for StartupXYZ: A Strategic Overview`
-- ❌ `Competitive differentiation and market strategy`
-- ❌ `Why content marketing works for B2B companies`
+**H2 and below** use **sentence case** (capitalise only the first word and proper nouns).
 
-H3 and below are **sentence case** (capitalise only the first word and proper nouns).
+**Examples:**
+- ✅ H1: `Competitive Differentiation and Market Strategy`
+- ✅ H1: `Three Goals for StartupXYZ: A Strategic Overview`
+- ✅ H2: `Competitive differentiation and market strategy`
+- ✅ H2: `Why content marketing works for B2B companies`
+- ❌ H2: `Competitive Differentiation And Market Strategy`
 
 > **Font availability note:** DM Serif Display and DM Sans are Google Fonts. They must be installed on the machine where Word will open the document, or embedded. When generating via `docx-js`, specify font names exactly as above — Word will substitute if not installed, but the document will render correctly on machines where the fonts are present.
 
@@ -163,7 +163,7 @@ Dark Jungle  →  #121E21   (dark accents, header)
 Black        →  #000000   (H2, body)
 
 H1  →  DM Serif Display, Regular, #E4032F, AP Title Case
-H2  →  DM Serif Display, Regular, #000000, AP Title Case
+H2  →  DM Serif Display, Regular, #000000, sentence case
 H3+ →  DM Sans, Regular, #000000, sentence case
 Body →  DM Sans, Regular, #000000
 ```
