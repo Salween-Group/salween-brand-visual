@@ -1,9 +1,11 @@
 ---
 name: salween-brand-visual
-description: "Apply the correct visual identity when creating Word documents (.docx files) for Salween Group or its clients. Use this skill at the start of ANY .docx creation task — before writing a single line of document code — to determine which brand to apply and get the exact colours, fonts, and styling rules. Trigger whenever the user asks to create, generate, or produce a Word document, report, brief, deliverable, or any .docx output. Also trigger when the user says things like 'make it on-brand', 'use the brand colours', 'apply our styling', or 'use the Salween brand'. If another skill (e.g. b2b-positioning, b2b-content-strategy) is producing a .docx deliverable, this skill's brand rules take precedence over any generic styling defaults in that skill."
+description: "Apply the correct visual identity when creating Word documents (.docx files) for Salween Group or its clients. Use this skill at the start of ANY .docx creation task — before writing a single line of document code — to determine which brand to apply and get the exact colours, fonts, and styling rules. Trigger whenever the user asks to create, generate, or produce a Word document, report, brief, deliverable, or any .docx output. Also trigger when the user says things like 'make it on-brand', 'use the brand colours', 'apply our styling', or 'use the Salween brand'. If another skill (e.g. positioning-dunford, b2b-content-strategy) is producing a .docx deliverable, this skill's brand rules take precedence over any generic styling defaults in that skill."
 ---
 
 # Salween Brand Visual Identity
+
+**Version:** 1.1.1
 
 ## What this skill does
 
@@ -11,6 +13,8 @@ This skill ensures every Word document produced by Salween Group — whether for
 
 1. **Salween Group identity** — the default. Use this when producing documents under the Salween Group brand.
 2. **Client identity** — use this when a client brand file exists and the user wants the document styled for the client, not for Salween.
+
+It also applies a default **"DRAFT 1" watermark** to every document it generates (Step 3). The watermark is a standard Word watermark, so the recipient can remove it in Word via **Design ▸ Watermark ▸ Remove Watermark**.
 
 Run this skill's brand-detection step at the very start of any `.docx` creation task, before writing any document code.
 
@@ -143,12 +147,79 @@ new Header({
 
 ---
 
-## Step 3: Hand off to the docx skill
+## Step 3: Add the default DRAFT 1 watermark
 
-Once the brand is determined, proceed with document generation using the `docx` skill. The docx skill handles all the technical mechanics (page size, tables, images, validation). This skill provides the brand layer — colours and fonts — that the docx skill applies.
+Every document this skill produces carries a light-grey diagonal **"DRAFT 1"** watermark by default, on **both** the Salween and client identities. It is a genuine Word watermark living in the page header, so:
+
+- It repeats on every page and sits behind the body text.
+- The recipient can remove it in Word via **Design ▸ Watermark ▸ Remove Watermark** (the shape is named `PowerPlusWaterMarkObject…`, which is exactly what that command looks for), or by double-clicking into the header and deleting it.
+
+docx-js (v9.x) has no native watermark API, so inject the standard Word VML watermark with `ImportedXmlComponent`. Add this once when building the document:
+
+```javascript
+const { ImportedXmlComponent } = require("docx");
+
+const WATERMARK_TEXT = "DRAFT 1"; // change to "DRAFT 2", "CONFIDENTIAL", etc.; omit the paragraph entirely for a final version
+
+const watermarkXml = `<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
+  <w:r>
+    <w:rPr><w:noProof/></w:rPr>
+    <w:pict>
+      <v:shapetype id="_x0000_t136" coordsize="21600,21600" o:spt="136" adj="10800" path="m@7,l@8,m@5,21600l@6,21600e">
+        <v:formulas>
+          <v:f eqn="sum #0 0 10800"/><v:f eqn="prod #0 2 1"/><v:f eqn="sum 21600 0 @1"/>
+          <v:f eqn="sum 0 0 @2"/><v:f eqn="sum 21600 0 @3"/><v:f eqn="if @0 @3 0"/>
+          <v:f eqn="if @0 21600 @1"/><v:f eqn="if @0 0 @2"/><v:f eqn="if @0 @4 21600"/>
+          <v:f eqn="mid @5 @6"/><v:f eqn="mid @8 @5"/><v:f eqn="mid @7 @8"/>
+          <v:f eqn="mid @6 @7"/><v:f eqn="sum @6 0 @5"/>
+        </v:formulas>
+        <v:path textpathok="t" o:connecttype="custom" o:connectlocs="@9,0;@10,10800;@11,21600;@12,10800" o:connectangles="270,180,90,0"/>
+        <v:textpath on="t" fitshape="t"/>
+        <o:lock v:ext="edit" text="t" shapetype="t"/>
+      </v:shapetype>
+      <v:shape id="PowerPlusWaterMarkObject1" o:spid="_x0000_s2049" type="#_x0000_t136" style="position:absolute;margin-left:0;margin-top:0;width:468pt;height:117pt;rotation:315;z-index:-251654144;mso-position-horizontal:center;mso-position-horizontal-relative:margin;mso-position-vertical:center;mso-position-vertical-relative:margin" o:allowincell="f" fillcolor="#D8D8D8" stroked="f">
+        <v:textpath style="font-family:&quot;DM Sans&quot;;font-size:1pt" string="${WATERMARK_TEXT}"/>
+      </v:shape>
+    </w:pict>
+  </w:r>
+</w:p>`;
+
+// CRITICAL: take `.root[0]`. fromXmlString wraps the parsed XML in a phantom root
+// element, so passing the raw result emits a stray <undefined> tag that corrupts
+// the .docx. `.root[0]` unwraps it to the real <w:p>.
+const watermarkParagraph = ImportedXmlComponent.fromXmlString(watermarkXml).root[0];
+```
+
+Wire it into the section's **header** (not the body) so it repeats on every page:
+
+```javascript
+sections: [{
+  properties: { page: { size: { width: 12240, height: 15840 } } },
+  headers: {
+    default: new Header({ children: [
+      watermarkParagraph,
+      // ...any other header content (e.g. the "SALWEEN GROUP" line below) goes here too
+    ]})
+  },
+  children: [ /* document body */ ]
+}]
+```
+
+**Notes**
+- **One instance per header.** `ImportedXmlComponent` objects are single-use during rendering — build a fresh `ImportedXmlComponent.fromXmlString(watermarkXml).root[0]` for each header you attach it to; don't reuse the same variable.
+- **Title-page / even-odd headers.** If the section sets `titlePage: true` or distinct even/odd headers, add a watermark paragraph to each of those `Header` objects too, giving each `<v:shape>` a unique `id` (`PowerPlusWaterMarkObject1`, `…2`, `…3`) so it appears on every page.
+- **Multi-section documents.** Repeat the watermark in each section's header.
+- The text auto-scales to the shape (`fitshape="t"`), so leave `font-size:1pt` as-is. Adjust `fillcolor` for a lighter/darker mark.
+
+---
+
+## Step 4: Hand off to the docx skill
+
+Once the brand is determined, proceed with document generation using the `docx` skill. The docx skill handles all the technical mechanics (page size, tables, images, validation). This skill provides the brand layer — colours, fonts, and the default watermark — that the docx skill applies.
 
 When writing document generation code:
 - Always import this skill's colour constants and styles block first
+- Add the default DRAFT 1 watermark to the section header (Step 3)
 - Override any generic Arial/blue defaults in the docx skill's examples with the Salween values above
 - Validate the output with `python scripts/office/validate.py` after generation
 
@@ -166,4 +237,14 @@ H1  →  DM Serif Display, Regular, #E4032F, AP Title Case
 H2  →  DM Serif Display, Regular, #000000, sentence case
 H3+ →  DM Sans, Regular, #000000, sentence case
 Body →  DM Sans, Regular, #000000
+
+Watermark →  "DRAFT 1", diagonal, #D8D8D8, in page header (removable in Word)
 ```
+
+## Version history
+
+| Version | Date | Change |
+|---|---|---|
+| 1.1.1 | 2026-09-18 | Cross-reference updated for skill renames |
+| 1.1.0 | 2026-09-14 | H1 takes AP Title Case; H2 and below are sentence case (rule, examples and quick-reference table) |
+| 1.0.0 | 2026-04-22 | Initial release: Salween/client brand detection, typography, colours, docx-js styles block; DRAFT 1 watermark added 2026-05-28 |
